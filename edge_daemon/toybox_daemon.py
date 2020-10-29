@@ -1,28 +1,14 @@
-'''
-/*
- * Copyright 2010-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- *  http://aws.amazon.com/apache2.0
- *
- * or in the "license" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- */
- '''
-
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 import logging
 import time
 import argparse
 import json
+import threading
 from boto3 import client
 from playsound import playsound
 import settings as settings
+from weight_sensor import WeightSensor
+from iot_core_client import IoTCoreClient
 
 
 def downloadAndSpeechText(textToSpeech):
@@ -67,10 +53,23 @@ parser.add_argument("-M", "--message", action="store", dest="message", default="
 
 args = parser.parse_args()
 host = args.host
-rootCAPath = args.rootCAPath
-certificatePath = args.certificatePath
-privateKeyPath = args.privateKeyPath
+root_ca_path = args.rootCAPath
+certificate_path = args.certificatePath
+private_key_path = args.privateKeyPath
 clientId = args.clientId
+
+
+def init_weight_sensor(weight_sensor):
+    output_per_gram = 485
+    offset = -109138
+    weight_sensor.init_sensor(output_per_gram, offset)
+
+def weight_sensor_worker(weight_sensor, iot_core):
+    interval = 1
+    while True:
+        sensor_val = weight_sensor.get_value()
+        print('[weight_sensor_thread] sensor_val : ' + str(sensor_val))
+        time.sleep(1)
 
 
 def main():
@@ -79,6 +78,18 @@ def main():
     subscribeTopic = 'toybox/' + clientId + '/control'
     iotCoreConnectionClientId = 'toybox/' + clientId
 
+    #IoT core
+    iot_core = IoTCoreClient()
+    iot_core.init(host, port, root_ca_path, private_key_path, certificate_path, iotCoreConnectionClientId)
+    
+    #weight sensor
+    test = 'test'
+    weight_sensor = WeightSensor()
+    init_weight_sensor(weight_sensor)
+    weight_sensor_thread = threading.Thread(target=weight_sensor_worker, args=(weight_sensor, test))
+    weight_sensor_thread.start()
+
+    '''
     # Configure logging
     logger = logging.getLogger("AWSIoTPythonSDK.core")
     logger.setLevel(logging.DEBUG)
@@ -86,6 +97,7 @@ def main():
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     streamHandler.setFormatter(formatter)
     logger.addHandler(streamHandler)
+
 
     # Init AWSIoTMQTTClient
     myAWSIoTMQTTClient = None
@@ -99,12 +111,19 @@ def main():
     myAWSIoTMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
     myAWSIoTMQTTClient.configureConnectDisconnectTimeout(10)  # 10 sec
     myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
+    '''
 
 
+    # Init Sensors
+    
+    
+    
+    
     print("loop start")
     # Connect and subscribe to AWS IoT
-    myAWSIoTMQTTClient.connect()
-    myAWSIoTMQTTClient.subscribe(subscribeTopic, 1, customCallback)
+    #myAWSIoTMQTTClient.connect()
+    iot_core.subscribe(subscribeTopic, customCallback)
+    #myAWSIoTMQTTClient.subscribe(subscribeTopic, 1, customCallback)
     time.sleep(2)
     print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@end")
     
@@ -115,8 +134,10 @@ def main():
         message['message'] = args.message
         message['sequence'] = loopCount
         messageJson = json.dumps(message)
+        '''
         myAWSIoTMQTTClient.publish(publishTopic, messageJson, 1)
         print('Published topic %s: %s\n' % (publishTopic, messageJson))
+        '''
         loopCount += 1
         time.sleep(1)
     
