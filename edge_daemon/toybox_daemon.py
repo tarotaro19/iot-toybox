@@ -10,6 +10,13 @@ import settings as settings
 from weight_sensor import WeightSensor
 from iot_core_client import IoTCoreClient
 
+### Logger
+logger = logging.getLogger("ToyboxDaemon")
+logger.setLevel(logging.DEBUG)
+streamHandler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(name)s\t%(funcName)s\t%(message)s')
+streamHandler.setFormatter(formatter)
+logger.addHandler(streamHandler)
 
 def downloadAndSpeechText(textToSpeech):
     polly = client("polly", region_name=settings.REGION_NAME, aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
@@ -25,17 +32,15 @@ def downloadAndSpeechText(textToSpeech):
 
     
 def subscription_callback(client, userdata, message):
-    print("Received a new message: ")
-    print(message.payload)
-    print("from topic: ")
-    print(message.topic)
-    print("--------------\n\n")
+    logger.info("Received a new message: ")
+    logger.info('from topic: ' + message.topic)
+    logger.info('message: ' + str(message.payload))
 
     request = json.loads(message.payload)
     requestType = request['type']
     requestDetail = request['detail']
-    print ('requestType: ' + requestType)
-    print ('requestDetail: ' + str(requestDetail))
+    logger.info ('requestType: ' + requestType)
+    logger.info ('requestDetail: ' + str(requestDetail))
     downloadAndSpeechText(requestDetail['text'])
 
 def create_publish_message_weight_sensor (value):
@@ -46,7 +51,7 @@ def create_publish_message_weight_sensor (value):
     
 def weight_sensor_worker(weight_sensor, iot_core, device_id):
     interval = 1
-    last_publish_value = -10
+    last_publish_value = -1000
     publish_topic = 'toybox/' + device_id + '/sensor/weight'
     while True:
         sensor_val = int(weight_sensor.get_value())
@@ -54,12 +59,13 @@ def weight_sensor_worker(weight_sensor, iot_core, device_id):
             message = create_publish_message_weight_sensor (sensor_val)
             iot_core.publish(publish_topic, message)
             last_publish_value = sensor_val
-            print('[weight_sensor_thread] sensor_val : ' + str(sensor_val))
+            logger.info('weight sensor val : ' + str(sensor_val))
         time.sleep(1)
 
 
-def main():
+def main():    
     # IoT core
+    logger.info('initialize IoT Core')
     iot_core = IoTCoreClient()
     iot_core_client_id = 'toybox/' + settings.DEVICE_ID
     subscribe_topic = 'toybox/' + settings.DEVICE_ID + '/control'
@@ -67,6 +73,7 @@ def main():
     iot_core.subscribe(subscribe_topic, subscription_callback)
     
     # Weight sensor
+    logger.info('initialize weight sensor')
     weight_sensor = WeightSensor()
     weight_sensor.init_sensor(settings.WEIGHT_SENSOR_OUTPUT_PER_GRAM, settings.WEIGHT_SENSOR_OFFSET)
     weight_sensor_thread = threading.Thread(target=weight_sensor_worker, args=(weight_sensor, iot_core, settings.DEVICE_ID))
