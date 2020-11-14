@@ -43,10 +43,11 @@ def subscription_callback(client, userdata, message):
     logger.info ('requestDetail: ' + str(requestDetail))
     downloadAndSpeechText(requestDetail['text'])
 
-def create_publish_message_weight_sensor (value):
+def create_publish_message_weight_sensor (value, diff):
     message = {}
     message['time'] = int(time.time())
     message['value'] = int(value)
+    message['diff'] = int(diff)
     return json.dumps(message)
     
 def weight_sensor_worker(weight_sensor, iot_core, device_id):
@@ -56,7 +57,8 @@ def weight_sensor_worker(weight_sensor, iot_core, device_id):
     while True:
         sensor_val = int(weight_sensor.get_value())
         if abs(last_publish_value - sensor_val) > 10:
-            message = create_publish_message_weight_sensor (sensor_val)
+            diff = sensor_val - last_publish_value
+            message = create_publish_message_weight_sensor (sensor_val, diff)
             iot_core.publish(publish_topic, message)
             last_publish_value = sensor_val
             logger.info('weight sensor val : ' + str(sensor_val))
