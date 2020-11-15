@@ -43,6 +43,11 @@ def subscription_callback(client, userdata, message):
     logger.info ('requestDetail: ' + str(requestDetail))
     downloadAndSpeechText(requestDetail['text'])
 
+def shadow_callback(client, userdata, message):
+    logger.info("Received a new message: ")
+    logger.info('from topic: ' + message.topic)
+    logger.info('message: ' + str(message.payload))
+
 def create_publish_message_weight_sensor (value, diff):
     message = {}
     message['time'] = int(time.time())
@@ -65,23 +70,40 @@ def weight_sensor_worker(weight_sensor, iot_core, device_id):
         time.sleep(1)
 
 
-def main():    
+def main():
+    # variables
+    mode = 'normal'
+    
     # IoT core
     logger.info('initialize IoT Core')
     iot_core = IoTCoreClient()
     iot_core_client_id = 'toybox/' + settings.DEVICE_ID
     subscribe_topic = 'toybox/' + settings.DEVICE_ID + '/control'
+    shadow_delta_topic = '$aws/things/' + settings.DEVICE_ID + '/shadow/update/delta'
     iot_core.init(settings.IOT_CORE_HOST, settings.IOT_CORE_PORT, settings.IOT_CORE_ROOT_CA_PATH, settings.IOT_CORE_PRIVATE_KEY_PATH, settings.IOT_CORE_CERTIFICATE_PATH, iot_core_client_id)
     iot_core.subscribe(subscribe_topic, subscription_callback)
+    iot_core.subscribe(shadow_delta_topic, shadow_callback)
     
     # Weight sensor
     logger.info('initialize weight sensor')
     weight_sensor = WeightSensor()
     weight_sensor.init_sensor(settings.WEIGHT_SENSOR_OUTPUT_PER_GRAM, settings.WEIGHT_SENSOR_OFFSET)
+    weight_sensor_initial_value = int(weight_sensor.get_value())
     weight_sensor_thread = threading.Thread(target=weight_sensor_worker, args=(weight_sensor, iot_core, settings.DEVICE_ID))
     weight_sensor_thread.start()    
-    
-    time.sleep(2)
+    #time.sleep(2)
+
+    # Init device state
+    topic = '$aws/things/' + settings.DEVICE_ID + '/shadow/update'
+    message = {}
+    reported = {}
+    reported['mode'] = mode
+    reported['weight_sensor'] = weight_sensor_initial_value
+    message = {"state": {"reported": reported}}
+    logger.info('update shadow')
+    logger.info('topic : ' + topic)
+    logger.info('message : ' + json.dumps(message))
+    iot_core.publish(topic, json.dumps(message))
     
     while True:
         time.sleep(1)
