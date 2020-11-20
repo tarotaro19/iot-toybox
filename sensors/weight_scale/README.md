@@ -28,8 +28,9 @@ https://github.com/tatobari/hx711py
         self.DOUT = dout
   ```
   - 赤:Vcc, 茶色:SCK->GPIO6, 白:DT->GPIO5, 黒: GND
-    (GPIO配置 : https://www.raspberrypi.org/documentation/usage/gpio/)
-* キャリブレーション
+    (GPIO配置 : https://www.raspberrypi.org/documentation/usage/gpio/)  
+    <img src="./img/weight_scale_wiring.jpg" width="320px">
+* キャリブレーション  
 (出力)/(gram) を算出して、 hx.set_reference_unit()の関数に突っ込むらしい
   - example.py の 下記をコメントアウト
   ```
