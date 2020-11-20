@@ -114,4 +114,20 @@ https://github.com/tatobari/hx711py
   - output/gram を算出  
   94050(載せた際の出力値) / 194(載せたものの重さ[g]) = 485
   - ソースコードに設定する
+* offset値 (0[g]の基準値)の算出・設定  
+  - offset算出モードで起動する(何も載せないで起動する)  
+    ```console
+    $ python3 weight_sensor_test.py -o
+    ----- offset check mode -----
+    average :-107008
+    please set above value to OFFSET
+    ```
+  - 上記の値をソースコードに設定する
+* 想定通りに計測できるか確認する  
+  - 通常モード(option無し)で起動する (最初から物を載せていても、載せていなくてもどちらでもOK)  
+  想定通りに動作するか(スケールの役割を果たしているかを確認する)
+    ```console
+    $ python3 weight_sensor_test.py
+    ```
+
     
