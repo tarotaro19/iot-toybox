@@ -3,6 +3,21 @@
 import time
 import sys
 
+REFERENCE_UNIT = 485
+OFFSET = -107008
+
+args = sys.argv
+is_calibration_mode = False
+is_offset_check_mode = False
+if len(args) >= 2:
+    opt = args[1]
+    if opt == '-c':
+        is_calibration_mode = True
+        print('----- calibration mode -----')
+    elif opt == '-o':
+        is_offset_check_mode = True
+        print('----- offset check mode -----')
+
 EMULATE_HX711=False
 
 referenceUnit = 1
@@ -38,18 +53,20 @@ hx.set_reading_format("MSB", "MSB")
 # In this case, 92 is 1 gram because, with 1 as a reference unit I got numbers near 0 without any weight
 # and I got numbers around 184000 when I added 2kg. So, according to the rule of thirds:
 # If 2000 grams is 184000 then 1000 grams is 184000 / 2000 = 92.
-#hx.set_reference_unit(113)
-hx.set_reference_unit(485)
+if is_calibration_mode != True:
+    hx.set_reference_unit(REFERENCE_UNIT)
 
 hx.reset()
-
 hx.tare()
-average = hx.read_average(15)
-print ('average :' + str(average))
-offset = -109138
-hx.set_offset(offset)
 
-print("Tare done! Add weight now...")
+if is_offset_check_mode == True:
+    average = hx.read_average(15)
+    print ('average :' + str(int(average)))
+    print ('please set above value to OFFSET')
+    exit(0)
+
+if is_calibration_mode != True:
+    hx.set_offset(OFFSET)
 
 # to use both channels, you'll need to tare them both
 #hx.tare_A()

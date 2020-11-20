@@ -44,10 +44,10 @@ hx.set_reference_unit(485)
 hx.reset()
 
 hx.tare()
-average = hx.read_average(15)
-print ('average :' + str(average))
-offset = -109138
-hx.set_offset(offset)
+#average = hx.read_average(15)
+#print ('average :' + str(average))
+#offset = -109138
+#hx.set_offset(offset)
 
 print("Tare done! Add weight now...")
 
