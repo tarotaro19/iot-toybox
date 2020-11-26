@@ -41,7 +41,8 @@ class IoTCoreClient:
 
     def publish(self, topic, message):
         self.client.publish(topic, message, 1)
-        
+
+    ### Shadows
     def subscribe_shadow_delta(self, callback):
         topic = '$aws/things/' + self.thing_name + '/shadow/update/delta'
         self.client.subscribe(topic, 1, callback)
@@ -77,3 +78,12 @@ class IoTCoreClient:
     def publish_shadow_get_request(self):
         topic = '$aws/things/' + self.thing_name + '/shadow/get'
         self.publish(topic, '')
+
+    def update_shadow(self, key, value):
+        topic = '$aws/things/' + self.thing_name + '/shadow/update'
+        message = {}
+        reported = {}
+        reported[key] = value
+        message = {"state": {"reported": reported}}
+        self.publish(topic, json.dumps(message))
+        

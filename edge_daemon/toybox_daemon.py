@@ -86,6 +86,7 @@ def weight_sensor_worker(weight_sensor, iot_core, device_id):
             diff = sensor_val - last_publish_value
             message = create_publish_message_weight_sensor (sensor_val, diff)
             iot_core.publish(publish_topic, message)
+            iot_core.update_shadow('weight_sensor', int(sensor_val))
             last_publish_value = sensor_val
             logger.info('weight sensor val : ' + str(sensor_val))
         time.sleep(1)
@@ -118,20 +119,6 @@ def main():
     weight_sensor_thread = threading.Thread(target=weight_sensor_worker, args=(weight_sensor, iot_core, settings.DEVICE_ID))
     weight_sensor_thread.start()    
     #time.sleep(2)
-
-    # Init device state
-    '''
-    topic = '$aws/things/' + settings.DEVICE_ID + '/shadow/update'
-    message = {}
-    reported = {}
-    reported['mode'] = mode
-    reported['weight_sensor'] = weight_sensor_initial_value
-    message = {"state": {"reported": reported}}
-    logger.info('update shadow')
-    logger.info('topic : ' + topic)
-    logger.info('message : ' + json.dumps(message))
-    iot_core.publish(topic, json.dumps(message))
-    '''
     
     while True:
         time.sleep(1)
