@@ -41,3 +41,35 @@ class IoTCoreClient:
     def subscribe_shadow_delta(self, thing_name, callback):
         topic = '$aws/things/' + thing_name + '/shadow/update/delta'
         self.client.subscribe(topic, 1, callback)
+
+    def subscribe_shadow_delete_accepted(self, thing_name, callback):
+        topic = '$aws/things/' + thing_name + '/shadow/delete/accepted'
+        self.client.subscribe(topic, 1, callback)
+
+    def subscribe_shadow_delete_rejected(self, thing_name, callback):
+        topic = '$aws/things/' + thing_name + '/shadow/delete/rejected'
+        self.client.subscribe(topic, 1, callback)
+
+    def subscribe_shadow_get_accepted(self, thing_name, callback):
+        topic = '$aws/things/' + thing_name + '/shadow/get/accepted'
+        self.client.subscribe(topic, 1, callback)
+
+    def subscribe_shadow_get_rejected(self, thing_name, callback):
+        topic = '$aws/things/' + thing_name + '/shadow/get/rejected'
+        self.client.subscribe(topic, 1, callback)
+
+    def subscribe_shadow_update_accepted(self, thing_name, callback):
+        topic = '$aws/things/' + thing_name + '/shadow/update/accepted'
+        self.client.subscribe(topic, 1, callback)
+
+    def subscribe_shadow_update_rejected(self, thing_name, callback):
+        topic = '$aws/things/' + thing_name + '/shadow/update/rejected'
+        self.client.subscribe(topic, 1, callback)
+
+    def subscribe_shadow_update_documents(self, thing_name, callback):
+        topic = '$aws/things/' + thing_name + '/shadow/update/documents'
+        self.client.subscribe(topic, 1, callback)
+
+    def publish_shadow_get_request(self, thing_name):
+        topic = '$aws/things/' + thing_name + '/shadow/get'
+        self.publish(topic, '')

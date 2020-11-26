@@ -55,6 +55,20 @@ def shadow_delta_callback(client, userdata, message):
     mode_required = delta['state']['mode']
     ### ToDo implement mode handler
 
+def shadow_get_accepted_callback(client, userdata, message):
+    logger.info("Received a new message: ")
+    logger.info('from topic: ' + message.topic)
+    logger.info('message: ' + str(message.payload))
+    delta = json.loads(message.payload)
+    mode_required = delta['state']['desired']['mode']
+    ### ToDo implement mode handler
+
+def shadow_common_callback(client, userdata, message):
+    logger.info("Received a new message: ")
+    logger.info('from topic: ' + message.topic)
+    logger.info('message: ' + str(message.payload))
+    delta = json.loads(message.payload)
+
 def create_publish_message_weight_sensor (value, diff):
     message = {}
     message['time'] = int(time.time())
@@ -82,10 +96,20 @@ def main():
     iot_core = IoTCoreClient()
     iot_core_client_id = 'toybox/' + settings.DEVICE_ID
     subscribe_topic = 'toybox/' + settings.DEVICE_ID + '/control'
-    shadow_delta_topic = '$aws/things/' + settings.DEVICE_ID + '/shadow/update/delta'
     iot_core.init(settings.IOT_CORE_HOST, settings.IOT_CORE_PORT, settings.IOT_CORE_ROOT_CA_PATH, settings.IOT_CORE_PRIVATE_KEY_PATH, settings.IOT_CORE_CERTIFICATE_PATH, iot_core_client_id)
     iot_core.subscribe(subscribe_topic, subscription_callback)
+
+    # IoT core shadows
     iot_core.subscribe_shadow_delta(settings.DEVICE_ID, shadow_delta_callback)
+    iot_core.subscribe_shadow_delete_accepted(settings.DEVICE_ID, shadow_common_callback)
+    iot_core.subscribe_shadow_delete_rejected(settings.DEVICE_ID, shadow_common_callback)
+    iot_core.subscribe_shadow_get_accepted(settings.DEVICE_ID, shadow_get_accepted_callback)
+    iot_core.subscribe_shadow_get_rejected(settings.DEVICE_ID, shadow_common_callback)
+    iot_core.subscribe_shadow_update_accepted(settings.DEVICE_ID, shadow_common_callback)
+    iot_core.subscribe_shadow_update_rejected(settings.DEVICE_ID, shadow_common_callback)
+    iot_core.subscribe_shadow_update_documents(settings.DEVICE_ID, shadow_common_callback)
+    iot_core.subscribe(subscribe_topic, subscription_callback)
+    iot_core.publish_shadow_get_request(settings.DEVICE_ID)
     
     # Weight sensor
     logger.info('initialize weight sensor')
