@@ -18,6 +18,10 @@ formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(name)s\t%(funcName)
 streamHandler.setFormatter(formatter)
 logger.addHandler(streamHandler)
 
+## variables
+mode = 'normal'
+
+
 def downloadAndSpeechText(textToSpeech):
     polly = client("polly", region_name=settings.REGION_NAME, aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
     response = polly.synthesize_speech(
@@ -43,10 +47,13 @@ def subscription_callback(client, userdata, message):
     logger.info ('requestDetail: ' + str(requestDetail))
     downloadAndSpeechText(requestDetail['text'])
 
-def shadow_callback(client, userdata, message):
+def shadow_delta_callback(client, userdata, message):
     logger.info("Received a new message: ")
     logger.info('from topic: ' + message.topic)
     logger.info('message: ' + str(message.payload))
+    delta = json.loads(message.payload)
+    mode_required = delta['state']['mode']
+    ### ToDo implement mode handler
 
 def create_publish_message_weight_sensor (value, diff):
     message = {}
@@ -69,11 +76,7 @@ def weight_sensor_worker(weight_sensor, iot_core, device_id):
             logger.info('weight sensor val : ' + str(sensor_val))
         time.sleep(1)
 
-
 def main():
-    # variables
-    mode = 'normal'
-    
     # IoT core
     logger.info('initialize IoT Core')
     iot_core = IoTCoreClient()
@@ -82,7 +85,7 @@ def main():
     shadow_delta_topic = '$aws/things/' + settings.DEVICE_ID + '/shadow/update/delta'
     iot_core.init(settings.IOT_CORE_HOST, settings.IOT_CORE_PORT, settings.IOT_CORE_ROOT_CA_PATH, settings.IOT_CORE_PRIVATE_KEY_PATH, settings.IOT_CORE_CERTIFICATE_PATH, iot_core_client_id)
     iot_core.subscribe(subscribe_topic, subscription_callback)
-    iot_core.subscribe(shadow_delta_topic, shadow_callback)
+    iot_core.subscribe_shadow_delta(settings.DEVICE_ID, shadow_delta_callback)
     
     # Weight sensor
     logger.info('initialize weight sensor')
@@ -94,6 +97,7 @@ def main():
     #time.sleep(2)
 
     # Init device state
+    '''
     topic = '$aws/things/' + settings.DEVICE_ID + '/shadow/update'
     message = {}
     reported = {}
@@ -104,6 +108,7 @@ def main():
     logger.info('topic : ' + topic)
     logger.info('message : ' + json.dumps(message))
     iot_core.publish(topic, json.dumps(message))
+    '''
     
     while True:
         time.sleep(1)

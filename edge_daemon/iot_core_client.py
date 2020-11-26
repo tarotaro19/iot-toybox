@@ -38,3 +38,6 @@ class IoTCoreClient:
     def publish(self, topic, message):
         self.client.publish(topic, message, 1)
         
+    def subscribe_shadow_delta(self, thing_name, callback):
+        topic = '$aws/things/' + thing_name + '/shadow/update/delta'
+        self.client.subscribe(topic, 1, callback)
