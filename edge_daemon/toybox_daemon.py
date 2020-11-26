@@ -96,20 +96,19 @@ def main():
     iot_core = IoTCoreClient()
     iot_core_client_id = 'toybox/' + settings.DEVICE_ID
     subscribe_topic = 'toybox/' + settings.DEVICE_ID + '/control'
-    iot_core.init(settings.IOT_CORE_HOST, settings.IOT_CORE_PORT, settings.IOT_CORE_ROOT_CA_PATH, settings.IOT_CORE_PRIVATE_KEY_PATH, settings.IOT_CORE_CERTIFICATE_PATH, iot_core_client_id)
+    iot_core.init(settings.IOT_CORE_HOST, settings.IOT_CORE_PORT, settings.IOT_CORE_ROOT_CA_PATH, settings.IOT_CORE_PRIVATE_KEY_PATH, settings.IOT_CORE_CERTIFICATE_PATH, iot_core_client_id, settings.DEVICE_ID)
     iot_core.subscribe(subscribe_topic, subscription_callback)
 
     # IoT core shadows
-    iot_core.subscribe_shadow_delta(settings.DEVICE_ID, shadow_delta_callback)
-    iot_core.subscribe_shadow_delete_accepted(settings.DEVICE_ID, shadow_common_callback)
-    iot_core.subscribe_shadow_delete_rejected(settings.DEVICE_ID, shadow_common_callback)
-    iot_core.subscribe_shadow_get_accepted(settings.DEVICE_ID, shadow_get_accepted_callback)
-    iot_core.subscribe_shadow_get_rejected(settings.DEVICE_ID, shadow_common_callback)
-    iot_core.subscribe_shadow_update_accepted(settings.DEVICE_ID, shadow_common_callback)
-    iot_core.subscribe_shadow_update_rejected(settings.DEVICE_ID, shadow_common_callback)
-    iot_core.subscribe_shadow_update_documents(settings.DEVICE_ID, shadow_common_callback)
-    iot_core.subscribe(subscribe_topic, subscription_callback)
-    iot_core.publish_shadow_get_request(settings.DEVICE_ID)
+    iot_core.subscribe_shadow_delta(shadow_delta_callback)
+    iot_core.subscribe_shadow_delete_accepted(shadow_common_callback)
+    iot_core.subscribe_shadow_delete_rejected(shadow_common_callback)
+    iot_core.subscribe_shadow_get_accepted(shadow_get_accepted_callback)
+    iot_core.subscribe_shadow_get_rejected(shadow_common_callback)
+    iot_core.subscribe_shadow_update_accepted(shadow_common_callback)
+    iot_core.subscribe_shadow_update_rejected(shadow_common_callback)
+    iot_core.subscribe_shadow_update_documents(shadow_common_callback)
+    iot_core.publish_shadow_get_request()
     
     # Weight sensor
     logger.info('initialize weight sensor')
