@@ -35,3 +35,7 @@ https://github.com/aws/aws-iot-device-sdk-python#installation
 ```console
 $ python3 toybox_daemon.py
 ```
+# Tips
+* IoT coreライブラリ  
+IoT Coreのデバイス側の実装に関しては下記のサンプルなどを参照  
+https://github.com/aws/aws-iot-device-sdk-python
