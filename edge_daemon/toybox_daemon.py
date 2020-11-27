@@ -6,9 +6,11 @@ import json
 import threading
 from boto3 import client
 from playsound import playsound
+import mplayer
 import settings as settings
 from weight_sensor import WeightSensor
 from iot_core_client import IoTCoreClient
+from toybox import Toybox
 
 ### Logger
 logger = logging.getLogger("ToyboxDaemon")
@@ -19,8 +21,7 @@ streamHandler.setFormatter(formatter)
 logger.addHandler(streamHandler)
 
 ## variables
-mode = 'normal'
-
+toybox = Toybox()
 
 def downloadAndSpeechText(textToSpeech):
     polly = client("polly", region_name=settings.REGION_NAME, aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
@@ -34,6 +35,19 @@ def downloadAndSpeechText(textToSpeech):
     file.close()
     playsound("test.mp3")
 
+    
+def toybox_mode_handler(mode_required):
+    if toybox.mode != mode_required:
+        toybox.mode = mode_required
+        if toybox.mode == 'cleaning_up':
+            toybox.play_bgm('sounds/bgm_maoudamashii_8bit29.mp3')
+        elif toybox.mode == 'standby':
+            toybox.stop_bgm()
+        else:
+            logger.warn("mode_required is not valid")
+            return
+        update_shadow('mode', mode)
+    
     
 def subscription_callback(client, userdata, message):
     logger.info("Received a new message: ")
@@ -53,10 +67,11 @@ def shadow_delta_callback(client, userdata, message):
     logger.info('message: ' + str(message.payload))
     delta = json.loads(message.payload)
     try :
-        mode_arequired = delta['state']['mode']
+        mode_required = delta['state']['mode']
     except:
         logger.error('mode property is not set')
-    ### ToDo implement mode handler
+        return
+    toybox_mode_handler(mode_required)
 
 def shadow_get_accepted_callback(client, userdata, message):
     logger.info("Received a new message: ")
@@ -124,7 +139,6 @@ def main():
     weight_sensor_initial_value = int(weight_sensor.get_value())
     weight_sensor_thread = threading.Thread(target=weight_sensor_worker, args=(weight_sensor, iot_core, settings.DEVICE_ID))
     weight_sensor_thread.start()    
-    #time.sleep(2)
     
     while True:
         time.sleep(1)
