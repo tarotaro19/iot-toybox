@@ -52,7 +52,10 @@ def shadow_delta_callback(client, userdata, message):
     logger.info('from topic: ' + message.topic)
     logger.info('message: ' + str(message.payload))
     delta = json.loads(message.payload)
-    mode_required = delta['state']['mode']
+    try :
+        mode_arequired = delta['state']['mode']
+    except:
+        logger.error('mode property is not set')
     ### ToDo implement mode handler
 
 def shadow_get_accepted_callback(client, userdata, message):
@@ -60,7 +63,10 @@ def shadow_get_accepted_callback(client, userdata, message):
     logger.info('from topic: ' + message.topic)
     logger.info('message: ' + str(message.payload))
     delta = json.loads(message.payload)
-    mode_required = delta['state']['desired']['mode']
+    try:
+        mode_required = delta['state']['desired']['mode']
+    except:
+        logger.error('mode property is not set')
     ### ToDo implement mode handler
 
 def shadow_common_callback(client, userdata, message):
