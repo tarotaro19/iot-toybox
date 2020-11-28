@@ -75,6 +75,7 @@ class Toybox:
         logger.info('start')
         while True:
             if self.iot_core_publish_queue.empty():
+                time.sleep(0.1)
                 continue
             else:
                 try:
@@ -88,6 +89,7 @@ class Toybox:
                         message = request[1]
                         self.iot_core.publosh(topic, message)
                 except:
+                    time.sleep(0.1)
                     continue                
 
                 
