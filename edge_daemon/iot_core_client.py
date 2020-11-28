@@ -4,18 +4,19 @@ import time
 import argparse
 import json
 
+logger = logging.getLogger("IoTCoreClient")
+logger.setLevel(logging.INFO)
+streamHandler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+streamHandler.setFormatter(formatter)
+logger.addHandler(streamHandler)
 
 class IoTCoreClient:
     client = None
     thing_name = None
     
     def __init__(self):
-        logger = logging.getLogger("AWSIoTPythonSDK.core")
-        logger.setLevel(logging.INFO)
-        streamHandler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        streamHandler.setFormatter(formatter)
-        logger.addHandler(streamHandler)
+        return
 
     def init(self, host, port, root_ca_path, private_key_path, certificate_path, client_id, thing_name):
         # Init AWSIoTMQTTClient
@@ -40,6 +41,7 @@ class IoTCoreClient:
         self.client.subscribe(topic, 1, callback)
 
     def publish(self, topic, message):
+        logger.info('publish - topic:' + topic + ', message' + message)
         self.client.publish(topic, message, 1)
 
     ### Shadows
