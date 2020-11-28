@@ -6,6 +6,7 @@ import json
 import threading
 import queue
 import asyncio
+import shelve
 from boto3 import client
 from playsound import playsound
 from mplayer import Player, CmdPrefix
@@ -26,8 +27,13 @@ class Toybox:
     iot_core_client_id = None
     iot_core_publish_queue = None
     mode = None
+    current_weight = None
+    total_toy_weightxo = None
     toybox_mode_standby = 'standby'
     toybox_mode_cleaning = 'cleaning'
+    toybox_shadow_name_mode = 'mode'
+    toybox_shadow_name_weight_sensor = 'weight_sensor'
+    toybox_shadow_name_total_toy_weight = 'total_toy_weight'
     bgm_player = None
     is_bgm_playing = False
     sound_effect_player = None
@@ -41,13 +47,19 @@ class Toybox:
         self.sound_effect_player = Player()
         
     def init(self):
+        # Load last memory
+        self.total_toy_weight = self.load_last_memory('total_toy_weight')
+        if self.total_toy_weight is None:
+            self.total_toy_weight = 0
+        
         # IoT Core
         logger.info('initialize iot core')        
         self.iot_core_client_id = 'toybox/' + settings.DEVICE_ID
         self.iot_core.init(settings.IOT_CORE_HOST, settings.IOT_CORE_PORT, settings.IOT_CORE_ROOT_CA_PATH, settings.IOT_CORE_PRIVATE_KEY_PATH, settings.IOT_CORE_CERTIFICATE_PATH, self.iot_core_client_id, settings.DEVICE_ID)
 
         # Iot Core shadows
-        self.iot_core.update_shadow('mode', self.mode)
+        self.iot_core.update_shadow(self.toybox_shadow_name_mode, self.mode)
+        self.iot_core.update_shadow(self.toybox_shadow_name_total_toy_weight, self.total_toy_weight)
         self.iot_core.subscribe_shadow_delta(self.shadow_delta_callback)
         self.iot_core.subscribe_shadow_delete_accepted(self.shadow_common_callback)
         self.iot_core.subscribe_shadow_delete_rejected(self.shadow_common_callback)
@@ -62,7 +74,7 @@ class Toybox:
 
         # subscribe control request topic
         subscribe_topic = 'toybox/' + settings.DEVICE_ID + '/control'
-        self.iot_core.subscribe(subscribe_topic, self.subscription_callback)
+        self.iot_core.subscribe(subscribe_topic, self.control_request_callback)
 
         # Weight sensor
         logger.info('initialize weight sensor')        
@@ -104,8 +116,7 @@ class Toybox:
             else:
                 logger.warning("mode_required is not valid")
                 return
-            self.iot_core_publish_queue.put(['shadow', 'mode', self.mode])
-            #self.iot_core.update_shadow('mode', self.mode)
+            self.iot_core_publish_queue.put(['shadow', self.toybox_shadow_name_mode, self.mode])
 
             
     def downloadAndSpeechText(self, textToSpeech):
@@ -118,16 +129,31 @@ class Toybox:
         playsound("test.mp3")
 
         
-    def subscription_callback(self, client, userdata, message):
+    def set_total_toy_weight(self):
+        self.total_toy_weight  = self.current_weight
+        self.save_last_memory('total_toy_weight', self.total_toy_weight)
+        self.iot_core_publish_queue.put(['shadow', self.toybox_shadow_name_total_toy_weight, self.total_toy_weight])
+        text_to_speech = 'おもちゃの総重量が' + str(self.total_toy_weight) + 'グラムに設定されました'
+        self.downloadAndSpeechText(text_to_speech)
+        
+        
+    def control_request_handler(self, request_type, request_detail):
+        if request_type == 'speech':
+            self.downloadAndSpeechText(requestDetail['text'])
+        elif request_type == 'set_total_weight':
+            self.set_total_toy_weight()
+            
+        
+    def control_request_callback(self, client, userdata, message):
         logger.info('from topic: ' + message.topic)
         logger.info('message: ' + str(message.payload))
-
-        request = json.loads(message.payload)
-        requestType = request['type']
-        requestDetail = request['detail']
-        logger.info ('requestType: ' + requestType)
-        logger.info ('requestDetail: ' + str(requestDetail))
-        self.downloadAndSpeechText(requestDetail['text'])
+        try:
+            request = json.loads(message.payload)
+            request_type = request['type']
+            request_detail = request['detail']
+        except:
+            logger.warning('request is invalid')
+        self.control_request_handler(request_type, request_detail)
 
         
     def shadow_delta_callback(self, client, userdata, message):
@@ -173,6 +199,7 @@ class Toybox:
         publish_topic = 'toybox/' + settings.DEVICE_ID + '/sensor/weight'
         while True:
             sensor_val = int(self.weight_sensor.get_value())
+            self.current_weight = sensor_val
             if abs(last_publish_value - sensor_val) > 10:
                 diff = sensor_val - last_publish_value
                 message = self.create_publish_message_weight_sensor (sensor_val, diff)
@@ -180,7 +207,7 @@ class Toybox:
                 self.iot_core.update_shadow('weight_sensor', int(sensor_val))
                 last_publish_value = sensor_val
                 logger.info('weight sensor val : ' + str(sensor_val))
-            time.sleep(1)
+            time.sleep(0.1)
 
             
     def play_bgm(self, path):
@@ -193,6 +220,20 @@ class Toybox:
         if self.is_bgm_playing == True:
             self.bgm_player.pause()
             self.is_bgm_playing = False
+
+    def load_last_memory(self, key):
+        last_memory = shelve.open('toybox_data')
+        if key in last_memory:
+            ret = last_memory[key]
+        else:
+            ret =  None
+        last_memory.close()
+        return ret
+
+    def save_last_memory(self, key, value):
+        last_memory = shelve.open('toybox_data')
+        last_memory[key] = value
+        last_memory.close()
 
         
 def main():
