@@ -203,7 +203,11 @@ class Toybox:
         message['diff'] = int(diff)
         return json.dumps(message)
 
-    
+
+    def play_sound_effect_with_weight_sensor_changes(self, sensor_val, diff):
+        if self.mode == self.toybox_mode_cleaning and diff > 0:
+            self.play_sound_effect('./sounds/se_maoudamashii_magical29.mp3')
+        
     def weight_sensor_worker(self):
         interval = 1
         last_publish_value = -1000
@@ -213,7 +217,8 @@ class Toybox:
             self.current_weight = sensor_val
             if abs(last_publish_value - sensor_val) > 10:
                 diff = sensor_val - last_publish_value
-                message = self.create_publish_message_weight_sensor (sensor_val, diff)
+                self.play_sound_effect_with_weight_sensor_changes(sensor_val, diff)
+                message = self.create_publish_message_weight_sensor(sensor_val, diff)
                 self.iot_core.publish(publish_topic, message)
                 self.iot_core.update_shadow('weight_sensor', int(sensor_val))
                 last_publish_value = sensor_val
@@ -226,11 +231,13 @@ class Toybox:
         self.bgm_player.loop = 0
         self.is_bgm_playing= True
 
-        
     def stop_bgm(self):
         if self.is_bgm_playing == True:
             self.bgm_player.pause()
             self.is_bgm_playing = False
+            
+    def play_sound_effect(self, path):
+        self.sound_effect_player.loadfile(path)
 
             
     def load_last_memory(self, key):
