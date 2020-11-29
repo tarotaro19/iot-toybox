@@ -19,21 +19,29 @@ class DualButton:
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.GPIO_BLUE_BUTTON, GPIO.IN)
         GPIO.setup(self.GPIO_RED_BUTTON, GPIO.IN)
+
+    def button_callback(self, gpio_pin):
+        if gpio_pin == self.GPIO_BLUE_BUTTON:
+            self.callback_blue_button()
+        elif gpio_pin == self.GPIO_RED_BUTTON:
+            self.callback_red_button()
         
     def init(self, callback_blue_button, callback_red_button):
         logger.info('init')
-        GPIO.add_event_detect(self.GPIO_BLUE_BUTTON, GPIO.RISING, callback=callback_blue_button, bouncetime=300)
-        GPIO.add_event_detect(self.GPIO_RED_BUTTON, GPIO.RISING, callback=callback_red_button, bouncetime=300)
+        self.callback_blue_button = callback_blue_button
+        self.callback_red_button = callback_red_button
+        GPIO.add_event_detect(self.GPIO_BLUE_BUTTON, GPIO.FALLING, callback=self.button_callback, bouncetime=500)
+        GPIO.add_event_detect(self.GPIO_RED_BUTTON, GPIO.FALLING, callback=self.button_callback, bouncetime=500)
 
 
 blue_count = 0
 red_count = 0
-def callback_blue_button(gpio_pin):
+def callback_blue_button():
     global blue_count 
     blue_count = blue_count+1
     logger.info("press blue button - " + str(blue_count))
 
-def callback_red_button(gpio_pin):
+def callback_red_button():
     global red_count
     red_count = red_count+1
     logger.info("press red button - " + str(red_count))

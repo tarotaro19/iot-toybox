@@ -13,6 +13,7 @@ from mplayer import Player, CmdPrefix
 import settings as settings
 from weight_sensor import WeightSensor
 from iot_core_client import IoTCoreClient
+from dual_button import DualButton
 
 ### Logger
 logger = logging.getLogger("Toybox")
@@ -43,6 +44,7 @@ class Toybox:
         self.iot_core = IoTCoreClient()
         self.iot_core_publish_queue = queue.Queue()
         self.weight_sensor = WeightSensor()
+        self.dual_button = DualButton()
         self.bgm_player = Player()
         self.sound_effect_player = Player()
         
@@ -82,9 +84,12 @@ class Toybox:
         weight_sensor_thread = threading.Thread(target=self.weight_sensor_worker)
         weight_sensor_thread.start()
 
+        # Button
+        self.dual_button.init(self.blue_button_handler, self.red_button_handler)
+        
 
     def iot_core_publish_async(self, topic, message):
-        self.iot_core_publish_queue.put([topic, messaeg])
+        self.iot_core_publish_queue.put([topic, message])
 
     def iot_core_publish_shadow_async(self, key, value):
         self.iot_core_publish_queue.put(['shadow', key, value])
@@ -105,7 +110,7 @@ class Toybox:
                     else:
                         topic = request[0]
                         message = request[1]
-                        self.iot_core.publosh(topic, message)
+                        self.iot_core.publish(topic, message)
                 except:
                     time.sleep(0.1)
                     continue                
@@ -227,6 +232,7 @@ class Toybox:
             self.bgm_player.pause()
             self.is_bgm_playing = False
 
+            
     def load_last_memory(self, key):
         last_memory = shelve.open('toybox_data')
         if key in last_memory:
@@ -235,11 +241,28 @@ class Toybox:
             ret =  None
         last_memory.close()
         return ret
-
+    
     def save_last_memory(self, key, value):
         last_memory = shelve.open('toybox_data')
         last_memory[key] = value
         last_memory.close()
+
+        
+    def create_publish_message_button_pressed(self, value):
+        message = {}
+        message['time'] = int(time.time())
+        message['value'] = value
+        return json.dumps(message)
+    
+    def blue_button_handler(self):
+        message = self.create_publish_message_button_pressed('blue')
+        publish_topic = 'toybox/' + settings.DEVICE_ID + '/sensor/button'
+        self.iot_core_publish_async(publish_topic, message)
+
+    def red_button_handler(self):
+        message = self.create_publish_message_button_pressed('red')
+        publish_topic = 'toybox/' + settings.DEVICE_ID + '/sensor/button'
+        self.iot_core_publish_async(publish_topic, message)
 
         
 def main():
