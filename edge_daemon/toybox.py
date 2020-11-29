@@ -82,6 +82,12 @@ class Toybox:
         weight_sensor_thread = threading.Thread(target=self.weight_sensor_worker)
         weight_sensor_thread.start()
 
+
+    def iot_core_publish_async(self, topic, message):
+        self.iot_core_publish_queue.put([topic, messaeg])
+
+    def iot_core_publish_shadow_async(self, key, value):
+        self.iot_core_publish_queue.put(['shadow', key, value])
         
     def iot_core_publish_message_worker(self):
         logger.info('start')
@@ -116,7 +122,7 @@ class Toybox:
             else:
                 logger.warning("mode_required is not valid")
                 return
-            self.iot_core_publish_queue.put(['shadow', self.toybox_shadow_name_mode, self.mode])
+            self.iot_core_publish_shadow_async(self.toybox_shadow_name_mode, self.mode)
 
             
     def downloadAndSpeechText(self, textToSpeech):
@@ -132,7 +138,7 @@ class Toybox:
     def set_total_toy_weight(self):
         self.total_toy_weight  = self.current_weight
         self.save_last_memory('total_toy_weight', self.total_toy_weight)
-        self.iot_core_publish_queue.put(['shadow', self.toybox_shadow_name_total_toy_weight, self.total_toy_weight])
+        self.iot_core_publish_shadow_async(self.toybox_shadow_name_total_toy_weight, self.total_toy_weight)
         text_to_speech = 'おもちゃの総重量が' + str(self.total_toy_weight) + 'グラムに設定されました'
         self.downloadAndSpeechText(text_to_speech)
         
