@@ -47,6 +47,7 @@ class Toybox:
         self.dual_button = DualButton()
         self.bgm_player = Player()
         self.sound_effect_player = Player()
+        self.text_to_speech_queue = queue.Queue()
         
     def init(self):
         # Load last memory
@@ -86,6 +87,10 @@ class Toybox:
 
         # Button
         self.dual_button.init(self.blue_button_handler, self.red_button_handler)
+
+        # text speech thread
+        text_to_speech_thread = threading.Thread(target=self.text_to_speech_worker)
+        text_to_speech_thread.start()
         
 
     def iot_core_publish_async(self, topic, message):
@@ -129,28 +134,23 @@ class Toybox:
                 return
             self.iot_core_publish_shadow_async(self.toybox_shadow_name_mode, self.mode)
 
-            
-    def downloadAndSpeechText(self, textToSpeech):
-        polly = client("polly", region_name=settings.REGION_NAME, aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
-        response = polly.synthesize_speech(Text = textToSpeech, OutputFormat = "mp3", VoiceId = "Mizuki")
-
-        file = open("test.mp3", "wb")
-        file.write(response["AudioStream"].read())
-        file.close()
-        playsound("test.mp3")
-
         
     def set_total_toy_weight(self):
         self.total_toy_weight  = self.current_weight
         self.save_last_memory('total_toy_weight', self.total_toy_weight)
         self.iot_core_publish_shadow_async(self.toybox_shadow_name_total_toy_weight, self.total_toy_weight)
         text_to_speech = 'おもちゃの総重量が' + str(self.total_toy_weight) + 'グラムに設定されました'
-        self.downloadAndSpeechText(text_to_speech)
+        self.speech_text_async(text_to_speech)
         
         
     def control_request_handler(self, request_type, request_detail):
         if request_type == 'speech':
-            self.downloadAndSpeechText(requestDetail['text'])
+            try:
+                text_to_speech = request_detail['text']
+            except:
+                logger.warning('request_detail is invalid')
+                return
+            self.speech_text_async(text_to_speech)
         elif request_type == 'set_total_weight':
             self.set_total_toy_weight()
             
@@ -164,6 +164,7 @@ class Toybox:
             request_detail = request['detail']
         except:
             logger.warning('request is invalid')
+            return
         self.control_request_handler(request_type, request_detail)
 
         
@@ -219,8 +220,8 @@ class Toybox:
                 diff = sensor_val - last_publish_value
                 self.play_sound_effect_with_weight_sensor_changes(sensor_val, diff)
                 message = self.create_publish_message_weight_sensor(sensor_val, diff)
-                self.iot_core.publish(publish_topic, message)
-                self.iot_core.update_shadow('weight_sensor', int(sensor_val))
+                self.iot_core_publish_async(publish_topic, message)
+                self.iot_core_publish_shadow_async('weight_sensor', int(sensor_val))
                 last_publish_value = sensor_val
                 logger.info('weight sensor val : ' + str(sensor_val))
             time.sleep(0.1)
@@ -271,6 +272,40 @@ class Toybox:
         publish_topic = 'toybox/' + settings.DEVICE_ID + '/sensor/button'
         self.iot_core_publish_async(publish_topic, message)
 
+    def create_ssml_text(self, text_to_speech):
+        ssml_text = "<speak><prosody volume=\"x-loud\">" + text_to_speech + "</prosody></speak>"
+        return ssml_text
+
+    def download_and_speech_text(self, text_to_speech):
+        polly = client("polly", region_name=settings.REGION_NAME, aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                       aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+
+        ssml_text = self.create_ssml_text(text_to_speech)
+        response = polly.synthesize_speech(Text = ssml_text, TextType = 'ssml',
+                                           OutputFormat = "mp3", VoiceId = "Mizuki")
+        file = open("test.mp3", "wb")
+        file.write(response["AudioStream"].read())
+        file.close()
+        playsound("test.mp3")
+
+
+    def speech_text_async(self, text_to_speech):
+        self.text_to_speech_queue.put([text_to_speech])
+        
+    def text_to_speech_worker(self):
+        logger.info('start')
+        while True:
+            if self.text_to_speech_queue.empty():
+                time.sleep(0.1)
+                continue
+            else:
+                try:
+                    request = self.text_to_speech_queue.get(block=False)
+                    text_to_speech = request[0]
+                    self.download_and_speech_text(text_to_speech)
+                except:
+                    time.sleep(0.1)
+                    continue                
         
 def main():
     toybox = Toybox()
