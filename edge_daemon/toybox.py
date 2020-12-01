@@ -24,23 +24,23 @@ streamHandler.setFormatter(formatter)
 logger.addHandler(streamHandler)
 
 class Toybox:
-    iot_core = None
-    iot_core_client_id = None
-    iot_core_publish_queue = None
-    mode = None
-    current_weight = None
-    total_toy_weightxo = None
     toybox_mode_standby = 'standby'
     toybox_mode_cleaning = 'cleaning'
-    toybox_shadow_name_mode = 'mode'
-    toybox_shadow_name_weight_sensor = 'weight_sensor'
-    toybox_shadow_name_total_toy_weight = 'total_toy_weight'
-    bgm_player = None
-    is_bgm_playing = False
-    sound_effect_player = None
+
+    # Shadow Properties name
+    shadow_mode = 'mode'
+    shadow_weight = 'weight'
+    shadow_total_toy_weight = 'total_toy_weight'
+    shadow_bgm_path = 'bgm_path'
+    shadow_is_bgm_playing = 'is_bmg_playing'
+    shadow_sound_effect_path_for_toy_in = 'sound_effect_path_for_toy_in'
+    shadow_sound_effect_path_for_toy_out = 'sound_effect_path_for_toy_out'
+    shadow_sound_effect_path_for_start_cleaning = 'sound_effect_path_for_start_cleaning'
+    shadow_sound_effect_path_for_end_cleaning = 'sound_effect_path_for_srart_cleaning'
+    shadow_message_start_cleaning= 'message_start_cleaning'
+    shadow_message_end_cleaning= 'message_end_cleaning'
     
     def __init__(self):
-        self.mode = self.toybox_mode_standby
         self.iot_core = IoTCoreClient()
         self.iot_core_publish_queue = queue.Queue()
         self.weight_sensor = WeightSensor()
@@ -48,12 +48,33 @@ class Toybox:
         self.bgm_player = Player()
         self.sound_effect_player = Player()
         self.text_to_speech_queue = queue.Queue()
+        self.iot_core_client_id = None
+        
+        self.mode = None
+        self.weight = None
+        self.total_toy_weight = None
+        self.bgm_path = None
+        self.is_bgm_playing = None
+        self.sound_effect_path_for_toy_in = None
+        self.sound_effect_path_for_toy_out = None
+        self.sound_effect_path_for_start_cleaning = None
+        self.sound_effect_path_for_end_cleaning = None
+        self.message_start_cleaning = None
+        self.message_end_cleaning = None
         
     def init(self):
         # Load last memory
-        self.total_toy_weight = self.load_last_memory('total_toy_weight')
-        if self.total_toy_weight is None:
-            self.total_toy_weight = 0
+        self.mode = self.load_last_memory(self.shadow_mode, self.toybox_mode_standby)
+        self.weight = self.load_last_memory(self.shadow_weight, 0)
+        self.total_toy_weight = self.load_last_memory(self.shadow_weight, 0)
+        self.bgm_path = self.load_last_memory(self.shadow_bgm_path, 'sounds/bgm_maoudamashii_8bit29.mp3')
+        self.is_bgm_playing = self.load_last_memory(self.shadow_is_bgm_playing, False)
+        self.sound_effect_path_for_toy_in = self.load_last_memory(self.shadow_sound_effect_path_for_toy_in, './sounds/se_maoudamashii_magical29.mp3')
+        self.sound_effect_path_for_toy_out = self.load_last_memory(self.shadow_sound_effect_path_for_toy_out, './sounds/se_maoudamashii_magical29.mp3')
+        self.sound_effect_path_for_start_cleaning = self.load_last_memory(self.shadow_sound_effect_path_for_start_cleaning, './sounds/se_maoudamashii_magical29.mp3')
+        self.sound_effect_path_for_end_cleaning = self.load_last_memory(self.shadow_sound_effect_path_for_end_cleaning , './sounds/se_maoudamashii_magical29.mp3')
+        self.message_start_cleaning = self.load_last_memory(self.shadow_message_start_cleaning, 'おもちゃを片付けよう！')
+        self.message_end_cleaning = self.load_last_memory(self.shadow_message_end_cleaning, 'すごい！片付けできたね！')
         
         # IoT Core
         logger.info('initialize iot core')        
@@ -61,8 +82,7 @@ class Toybox:
         self.iot_core.init(settings.IOT_CORE_HOST, settings.IOT_CORE_PORT, settings.IOT_CORE_ROOT_CA_PATH, settings.IOT_CORE_PRIVATE_KEY_PATH, settings.IOT_CORE_CERTIFICATE_PATH, self.iot_core_client_id, settings.DEVICE_ID)
 
         # Iot Core shadows
-        self.iot_core.update_shadow(self.toybox_shadow_name_mode, self.mode)
-        self.iot_core.update_shadow(self.toybox_shadow_name_total_toy_weight, self.total_toy_weight)
+        self.update_shadow_with_toybox_last_memory()
         self.iot_core.subscribe_shadow_delta(self.shadow_delta_callback)
         self.iot_core.subscribe_shadow_delete_accepted(self.shadow_common_callback)
         self.iot_core.subscribe_shadow_delete_rejected(self.shadow_common_callback)
@@ -126,19 +146,19 @@ class Toybox:
             logger.info('try to change mode to ' + mode_required)
             self.mode = mode_required
             if self.mode == self.toybox_mode_cleaning:
-                self.play_bgm('sounds/bgm_maoudamashii_8bit29.mp3')
+                self.play_bgm(self.bgm_path)
             elif self.mode == self.toybox_mode_standby:
                 self.stop_bgm()
             else:
                 logger.warning("mode_required is not valid")
                 return
-            self.iot_core_publish_shadow_async(self.toybox_shadow_name_mode, self.mode)
+            self.iot_core_publish_shadow_async(self.shadow_mode, self.mode)
 
         
     def set_total_toy_weight(self):
-        self.total_toy_weight  = self.current_weight
+        self.total_toy_weight  = self.weight
         self.save_last_memory('total_toy_weight', self.total_toy_weight)
-        self.iot_core_publish_shadow_async(self.toybox_shadow_name_total_toy_weight, self.total_toy_weight)
+        self.iot_core_publish_shadow_async(self.shadow_total_toy_weight, self.total_toy_weight)
         text_to_speech = 'おもちゃの総重量が' + str(self.total_toy_weight) + 'グラムに設定されました'
         self.speech_text_async(text_to_speech)
         
@@ -207,7 +227,7 @@ class Toybox:
 
     def play_sound_effect_with_weight_sensor_changes(self, sensor_val, diff):
         if self.mode == self.toybox_mode_cleaning and diff > 0:
-            self.play_sound_effect('./sounds/se_maoudamashii_magical29.mp3')
+            self.play_sound_effect(self.sound_effect_path_for_toy_in)
         
     def weight_sensor_worker(self):
         interval = 1
@@ -215,13 +235,13 @@ class Toybox:
         publish_topic = 'toybox/' + settings.DEVICE_ID + '/sensor/weight'
         while True:
             sensor_val = int(self.weight_sensor.get_value())
-            self.current_weight = sensor_val
+            self.weight = sensor_val
             if abs(last_publish_value - sensor_val) > 10:
                 diff = sensor_val - last_publish_value
                 self.play_sound_effect_with_weight_sensor_changes(sensor_val, diff)
                 message = self.create_publish_message_weight_sensor(sensor_val, diff)
                 self.iot_core_publish_async(publish_topic, message)
-                self.iot_core_publish_shadow_async('weight_sensor', int(sensor_val))
+                self.iot_core_publish_shadow_async(self.shadow_weight, int(sensor_val))
                 last_publish_value = sensor_val
                 logger.info('weight sensor val : ' + str(sensor_val))
             time.sleep(0.1)
@@ -241,12 +261,13 @@ class Toybox:
         self.sound_effect_player.loadfile(path)
 
             
-    def load_last_memory(self, key):
+    def load_last_memory(self, key, default):
         last_memory = shelve.open('toybox_data')
         if key in last_memory:
             ret = last_memory[key]
         else:
-            ret =  None
+            last_memory[key] = default
+            ret = default
         last_memory.close()
         return ret
     
@@ -254,6 +275,11 @@ class Toybox:
         last_memory = shelve.open('toybox_data')
         last_memory[key] = value
         last_memory.close()
+
+    def update_shadow_with_toybox_last_memory(self):
+        last_memory = shelve.open('toybox_data')
+        for key in last_memory:
+            self.iot_core.update_shadow(key, last_memory[key])
 
         
     def create_publish_message_button_pressed(self, value):
