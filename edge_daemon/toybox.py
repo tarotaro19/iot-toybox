@@ -248,7 +248,7 @@ class Toybox:
 
     def play_sound_effect_with_weight_sensor_changes(self, sensor_val, diff):
         logger.debug('')
-        if self.properties.mode == self.toybox_mode_cleaning and diff > 0:
+        if self.properties.mode.value == self.toybox_mode_cleaning and diff > 0:
             self.play_sound_effect(self.properties.sound_effect_path_for_toy_in.value)
         
     def weight_sensor_worker(self):
@@ -270,9 +270,10 @@ class Toybox:
             
     def play_bgm(self, path):
         logger.debug('')
-        self.bgm_player.loadfile(path)
-        self.bgm_player.loop = 0
-        self.update_property(self.properties.is_bgm_playing, True)
+        if self.properties.is_bgm_playing.value == False:
+            self.bgm_player.loadfile(path)
+            self.bgm_player.loop = 0
+            self.update_property(self.properties.is_bgm_playing, True)
 
     def stop_bgm(self):
         logger.debug('')
