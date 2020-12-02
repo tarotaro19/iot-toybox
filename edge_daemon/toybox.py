@@ -7,6 +7,7 @@ import threading
 import queue
 import asyncio
 import shelve
+import sys
 from boto3 import client
 from playsound import playsound
 from mplayer import Player, CmdPrefix
@@ -33,10 +34,11 @@ class Toybox:
     shadow_total_toy_weight = 'total_toy_weight'
     shadow_bgm_path = 'bgm_path'
     shadow_is_bgm_playing = 'is_bmg_playing'
+    shadow_sound_effect_path_for_notification = 'sound_effect_path_for_notification'
     shadow_sound_effect_path_for_toy_in = 'sound_effect_path_for_toy_in'
     shadow_sound_effect_path_for_toy_out = 'sound_effect_path_for_toy_out'
     shadow_sound_effect_path_for_start_cleaning = 'sound_effect_path_for_start_cleaning'
-    shadow_sound_effect_path_for_end_cleaning = 'sound_effect_path_for_srart_cleaning'
+    shadow_sound_effect_path_for_end_cleaning = 'sound_effect_path_for_end_cleaning'
     shadow_message_start_cleaning= 'message_start_cleaning'
     shadow_message_end_cleaning= 'message_end_cleaning'
     
@@ -47,7 +49,7 @@ class Toybox:
         self.dual_button = DualButton()
         self.bgm_player = Player()
         self.sound_effect_player = Player()
-        self.text_to_speech_queue = queue.Queue()
+        self.play_sound_queue = queue.Queue()
         self.iot_core_client_id = None
         
         self.mode = None
@@ -55,6 +57,7 @@ class Toybox:
         self.total_toy_weight = None
         self.bgm_path = None
         self.is_bgm_playing = None
+        self.sound_effect_path_for_notification = None
         self.sound_effect_path_for_toy_in = None
         self.sound_effect_path_for_toy_out = None
         self.sound_effect_path_for_start_cleaning = None
@@ -69,6 +72,7 @@ class Toybox:
         self.total_toy_weight = self.load_last_memory(self.shadow_weight, 0)
         self.bgm_path = self.load_last_memory(self.shadow_bgm_path, 'sounds/bgm_maoudamashii_8bit29.mp3')
         self.is_bgm_playing = self.load_last_memory(self.shadow_is_bgm_playing, False)
+        self.sound_effect_path_for_notification = self.load_last_memory(self.shadow_sound_effect_path_for_notification, './sounds/se_maoudamashii_onepoint23.mp3')
         self.sound_effect_path_for_toy_in = self.load_last_memory(self.shadow_sound_effect_path_for_toy_in, './sounds/se_maoudamashii_magical29.mp3')
         self.sound_effect_path_for_toy_out = self.load_last_memory(self.shadow_sound_effect_path_for_toy_out, './sounds/se_maoudamashii_magical29.mp3')
         self.sound_effect_path_for_start_cleaning = self.load_last_memory(self.shadow_sound_effect_path_for_start_cleaning, './sounds/se_maoudamashii_magical29.mp3')
@@ -109,8 +113,8 @@ class Toybox:
         self.dual_button.init(self.blue_button_handler, self.red_button_handler)
 
         # text speech thread
-        text_to_speech_thread = threading.Thread(target=self.text_to_speech_worker)
-        text_to_speech_thread.start()
+        play_sound_thread = threading.Thread(target=self.play_sound_worker)
+        play_sound_thread.start()
         
 
     def iot_core_publish_async(self, topic, message):
@@ -145,36 +149,56 @@ class Toybox:
         if self.mode != mode_required:
             logger.info('try to change mode to ' + mode_required)
             self.mode = mode_required
-            if self.mode == self.toybox_mode_cleaning:
-                self.play_bgm(self.bgm_path)
-            elif self.mode == self.toybox_mode_standby:
-                self.stop_bgm()
-            else:
-                logger.warning("mode_required is not valid")
-                return
             self.iot_core_publish_shadow_async(self.shadow_mode, self.mode)
 
+    def toybox_is_bgm_playing_handler(self, is_bgm_playing_required):
+        if self.is_bgm_playing != is_bgm_playing_required:
+            if self.is_bgm_playing == True:
+                self.play_sound_async('bgm', self.bgm_path)
+            elif self.is_bgm_playing == False:
+                self.stop_bgm()
+            
+
+    def speech_request_handler(self, request_detail):
+        try:
+            text_to_speech = request_detail['text']
+        except:
+            logger.warning('request_detail is invalid')
+            return
+        self.play_sound_async('text_to_speech', text_to_speech)
+
+    def play_sound_effect_request_handler(self, request_detail):
+        try:
+            sound_effect_type = request_detail['sound_effect_type']
+        except:
+            logger.warning('request_detail is invalid')
+            return
+        if sound_effect_type == 'notification':
+            self.play_sound_async('sound_effect', self.sound_effect_path_for_notification)
         
-    def set_total_toy_weight(self):
+    def set_total_toy_weight_request_handler(self, request_detail):
         self.total_toy_weight  = self.weight
         self.save_last_memory('total_toy_weight', self.total_toy_weight)
         self.iot_core_publish_shadow_async(self.shadow_total_toy_weight, self.total_toy_weight)
         text_to_speech = 'おもちゃの総重量が' + str(self.total_toy_weight) + 'グラムに設定されました'
-        self.speech_text_async(text_to_speech)
-        
+        self.play_sound_async('sound_effect', self.sound_effect_path_for_notification)
+        self.play_sound_async('text_to_speech', text_to_speech)
+
+    def factory_reset_request_handler(self, request_detail):
+        logger.info('factory reset')
+        self.reset_last_memory()
+        sys.exit(0)
         
     def control_request_handler(self, request_type, request_detail):
         if request_type == 'speech':
-            try:
-                text_to_speech = request_detail['text']
-            except:
-                logger.warning('request_detail is invalid')
-                return
-            self.speech_text_async(text_to_speech)
+            self.speech_request_handler(request_detail)
+        elif request_type == 'play_sound_effect':
+            self.play_sound_effect_handler(request_detail)
         elif request_type == 'set_total_weight':
-            self.set_total_toy_weight()
-            
-        
+            self.set_total_toy_weight_request_handler(request_detail)
+        elif request_type == 'factory_reset':
+            self.factory_reset_request_handler(request_detail)
+
     def control_request_callback(self, client, userdata, message):
         logger.info('from topic: ' + message.topic)
         logger.info('message: ' + str(message.payload))
@@ -192,12 +216,18 @@ class Toybox:
         logger.info('from topic: ' + message.topic)
         logger.info('message: ' + str(message.payload))
         delta = json.loads(message.payload)
-        try :
-            mode_required = delta['state']['mode']
+        try:
+            changed_shadow_properties = delta['state']
         except:
-            logger.error('mode property is not set')
+            logger.warning('invalid data')
             return
-        self.toybox_mode_handler(mode_required)
+        for shadow_prop in changed_shadow_properties:
+            print('shadow delta property : ' + shadow_prop)
+            if shadow_prop == self.shadow_mode:
+                self.toybox_mode_handler(shadow_prop)
+            elif shadow_prop == self.shadow_is_bgm_playing:
+                self.toybox_is_bgm_playing_handler(shadow_prop)
+        
         
     def shadow_get_accepted_callback(self, client, userdata, message):
         logger.info('from topic: ' + message.topic)
@@ -250,12 +280,14 @@ class Toybox:
     def play_bgm(self, path):
         self.bgm_player.loadfile(path)
         self.bgm_player.loop = 0
-        self.is_bgm_playing= True
+        self.is_bgm_playing = True
+        self.iot_core_publish_shadow_async(self.shadow_is_bgm_playing, self.is_bgm_playing)
 
     def stop_bgm(self):
         if self.is_bgm_playing == True:
             self.bgm_player.pause()
             self.is_bgm_playing = False
+            self.iot_core_publish_shadow_async(self.shadow_is_bgm_playing, self.is_bgm_playing)
             
     def play_sound_effect(self, path):
         self.sound_effect_player.loadfile(path)
@@ -274,6 +306,11 @@ class Toybox:
     def save_last_memory(self, key, value):
         last_memory = shelve.open('toybox_data')
         last_memory[key] = value
+        last_memory.close()
+
+    def reset_last_memory(self):
+        last_memory = shelve.open('toybox_data')
+        last_memory.clear()
         last_memory.close()
 
     def update_shadow_with_toybox_last_memory(self):
@@ -314,21 +351,26 @@ class Toybox:
         file.close()
         playsound("test.mp3")
 
-
-    def speech_text_async(self, text_to_speech):
-        self.text_to_speech_queue.put([text_to_speech])
+    def play_sound_async(self, sound_type, sound_detail): #type : 'bgm', 'sound_effect', 'text_to_speech'
+        self.play_sound_queue.put([sound_type, sound_detail])
         
-    def text_to_speech_worker(self):
+    def play_sound_worker(self):
         logger.info('start')
         while True:
-            if self.text_to_speech_queue.empty():
+            if self.play_sound_queue.empty():
                 time.sleep(0.1)
                 continue
             else:
                 try:
-                    request = self.text_to_speech_queue.get(block=False)
-                    text_to_speech = request[0]
-                    self.download_and_speech_text(text_to_speech)
+                    request = self.play_sound_queue.get(block=False)
+                    sound_type = request[0]
+                    sound_detail = request[1]
+                    if sound_type == 'text_to_speech':
+                        self.download_and_speech_text(sound_detail)
+                    elif sound_type == 'bgm':
+                        self.play_bgm(sound_detail)
+                    elif sound_type == 'sound_effect':
+                        playsound(sound_detail)
                 except:
                     time.sleep(0.1)
                     continue                
