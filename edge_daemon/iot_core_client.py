@@ -12,9 +12,6 @@ streamHandler.setFormatter(formatter)
 logger.addHandler(streamHandler)
 
 class IoTCoreClient:
-    client = None
-    thing_name = None
-    
     def __init__(self):
         return
 
@@ -82,6 +79,14 @@ class IoTCoreClient:
         self.publish(topic, '')
 
     def update_shadow(self, key, value):
+        topic = '$aws/things/' + self.thing_name + '/shadow/update'
+        message = {}
+        reported = {}
+        reported[key] = value
+        message = {"state": {"reported": reported}}
+        self.publish(topic, json.dumps(message))
+
+    def reset_shadow(self):
         topic = '$aws/things/' + self.thing_name + '/shadow/update'
         message = {}
         reported = {}
