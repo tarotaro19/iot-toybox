@@ -38,6 +38,7 @@ class ToyboxProperties:
         self.bgm_path = ToyboxProperty('bgm_path', 'sounds/bgm_maoudamashii_8bit29.mp3')
         self.is_bgm_playing = ToyboxProperty('is_bgm_playing', False)
         self.sound_effect_path_for_notification = ToyboxProperty('sound_effect_path_for_notification', './sounds/se_maoudamashii_onepoint23.mp3')
+        self.sound_effect_path_for_nogood = ToyboxProperty('sound_effect_path_for_nogood', './sounds/se_maoudamashii_onepoint14.mp3')
         self.sound_effect_path_for_toy_in = ToyboxProperty('sound_effect_path_for_toy_in', './sounds/se_maoudamashii_magical29.mp3')
         self.sound_effect_path_for_toy_out = ToyboxProperty('sound_effect_path_for_toy_out', './sounds/se_maoudamashii_magical29.mp3')
         
@@ -160,6 +161,8 @@ class Toybox:
             return
         if sound_effect_type == 'notification':
             self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_notification.value)
+        elif sound_effect_type == 'nogood':
+            self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_nogood.value)
         
     def set_total_toy_weight_request_handler(self, request_detail):
         logger.debug('')
@@ -363,7 +366,7 @@ class Toybox:
         playsound("test.mp3")
 
     def play_sound_async(self, sound_type, sound_detail): #type : 'bgm', 'sound_effect', 'text_to_speech'
-        logger.debug('')
+        logger.debug('sound_type :' + sound_type + ', sound_detail : ' + sound_detail)
         self.play_sound_queue.put([sound_type, sound_detail])
         
     def play_sound_worker(self):
