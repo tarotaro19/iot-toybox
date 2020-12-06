@@ -39,6 +39,7 @@ class ToyboxProperties:
         self.is_bgm_playing = ToyboxProperty('is_bgm_playing', False)
         self.sound_effect_path_for_notification = ToyboxProperty('sound_effect_path_for_notification', './sounds/se_maoudamashii_onepoint23.mp3')
         self.sound_effect_path_for_nogood = ToyboxProperty('sound_effect_path_for_nogood', './sounds/se_maoudamashii_onepoint14.mp3')
+        self.sound_effect_path_for_good = ToyboxProperty('sound_effect_path_for_good', './sounds/se_maoudamashii_onepoint15.mp3')
         self.sound_effect_path_for_toy_in = ToyboxProperty('sound_effect_path_for_toy_in', './sounds/se_maoudamashii_magical29.mp3')
         self.sound_effect_path_for_toy_out = ToyboxProperty('sound_effect_path_for_toy_out', './sounds/se_maoudamashii_magical29.mp3')
         
@@ -163,6 +164,8 @@ class Toybox:
             self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_notification.value)
         elif sound_effect_type == 'nogood':
             self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_nogood.value)
+        elif sound_effect_type == 'good':
+            self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_good.value)
         
     def set_total_toy_weight_request_handler(self, request_detail):
         logger.debug('')
