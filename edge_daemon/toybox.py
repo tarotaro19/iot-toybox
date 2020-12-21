@@ -139,12 +139,12 @@ class Toybox:
                 
     def toybox_mode_handler(self, mode_required):
         logger.debug('')
-        if self.properties.mode != mode_required:
+        if self.properties.mode.value != mode_required:
             self.update_property(self.properties.mode, mode_required)
 
     def toybox_is_bgm_playing_handler(self, is_bgm_playing_required):
         logger.debug('')
-        if self.properties.is_bgm_playing != is_bgm_playing_required:
+        if self.properties.is_bgm_playing.value != is_bgm_playing_required:
             if is_bgm_playing_required == True:
                 self.play_sound_async('bgm', self.properties.bgm_path.value)
             elif is_bgm_playing_required == False:
