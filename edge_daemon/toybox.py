@@ -15,6 +15,7 @@ import settings as settings
 from weight_sensor import WeightSensor
 from iot_core_client import IoTCoreClient
 from dual_button import DualButton
+from mfrc522 import SimpleMFRC522
 
 ### Logger
 logger = logging.getLogger("Toybox")
@@ -37,11 +38,13 @@ class ToyboxProperties:
         self.total_toy_weight = ToyboxProperty('total_toy_weight', 0)
         self.bgm_path = ToyboxProperty('bgm_path', 'sounds/bgm_maoudamashii_8bit29.mp3')
         self.is_bgm_playing = ToyboxProperty('is_bgm_playing', False)
+        self.rfid_detection_sound = ToyboxProperty('rfid_detection_sound', True)
         self.sound_effect_path_for_notification = ToyboxProperty('sound_effect_path_for_notification', './sounds/se_maoudamashii_onepoint23.mp3')
         self.sound_effect_path_for_nogood = ToyboxProperty('sound_effect_path_for_nogood', './sounds/se_maoudamashii_onepoint14.mp3')
         self.sound_effect_path_for_good = ToyboxProperty('sound_effect_path_for_good', './sounds/se_maoudamashii_onepoint15.mp3')
         self.sound_effect_path_for_toy_in = ToyboxProperty('sound_effect_path_for_toy_in', './sounds/se_maoudamashii_magical29.mp3')
         self.sound_effect_path_for_toy_out = ToyboxProperty('sound_effect_path_for_toy_out', './sounds/se_maoudamashii_magical29.mp3')
+        self.sound_effect_path_for_rfid_detection = ToyboxProperty('sound_effect_path_for_rfid_detection', './sounds/se_maoudamashii_onepoint25.mp3')
         
 class Toybox:
     toybox_mode_standby = 'standby'
@@ -98,6 +101,10 @@ class Toybox:
         # text speech thread
         play_sound_thread = threading.Thread(target=self.play_sound_worker)
         play_sound_thread.start()
+
+        # RFID reader thread
+        rfid_reader_thread = threading.Thread(target=self.rfid_reader_worker)
+        rfid_reader_thread.start()
         
 
     def iot_core_publish_async(self, topic, message):
@@ -391,7 +398,33 @@ class Toybox:
                         playsound(sound_detail)
                 except:
                     time.sleep(0.1)
-                    continue                
+                    continue
+
+    def create_publish_message_rfid(self, uid, text):
+        logger.debug('')
+        message = {}
+        message['time'] = int(time.time())
+        message['uid'] = uid
+        message['text'] = text
+        return json.dumps(message)
+    
+    def rfid_reader_worker(self):
+        logger.debug('')
+        reader = SimpleMFRC522()
+        publish_topic = 'toybox/' + settings.DEVICE_ID + '/sensor/rfid'
+        
+        while True:
+            try:
+                uid, text = reader.read()
+                logger.info('UID:' + str(uid) +  ', Text:' + text)
+                message = self.create_publish_message_rfid(str(uid), text)
+                self.iot_core_publish_async(publish_topic, message)
+                if self.properties.rfid_detection_sound.value == True:
+                    self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_rfid_detection.value)
+                time.sleep(2)
+            except:
+                logger.error('error')
+                time.sleep(0.5)
         
 def main():
     toybox = Toybox()
