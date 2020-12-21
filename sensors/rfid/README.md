@@ -3,9 +3,9 @@ RC-522 というRFID　readerを利用する
 ## 参考
 * RaspberryPi で NFC RFID-RC522 を Python3 で使う  
 https://qiita.com/nanbuwks/items/c502ba880fbb93f522b3  
-*  mxgxw/MFRC522-python  (ここから色々なプロジェクトがforkさてれいるらしい)
+*  mxgxw/MFRC522-python  (ここから色々なプロジェクトがforkさてれいるらしい)  
 https://github.com/mxgxw/MFRC522-python
-*  pimylifeup/MFRC522-python (これを使うpip でmfrc522 でインストールできる)
+*  pimylifeup/MFRC522-python (これを使うpip でmfrc522 でインストールできる)  
 https://github.com/pimylifeup/MFRC522-python  
 ## 準備
 * 配線  
