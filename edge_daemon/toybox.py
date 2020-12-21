@@ -263,7 +263,7 @@ class Toybox:
         publish_topic = 'toybox/' + settings.DEVICE_ID + '/sensor/weight'
         while True:
             sensor_val = int(self.weight_sensor.get_value())
-            if abs(last_publish_value - sensor_val) > 10:
+            if abs(last_publish_value - sensor_val) > 3:
                 diff = sensor_val - last_publish_value
                 self.play_sound_effect_with_weight_sensor_changes(sensor_val, diff)
                 message = self.create_publish_message_weight_sensor(sensor_val, diff)
@@ -271,7 +271,7 @@ class Toybox:
                 self.update_property(self.properties.weight, sensor_val)
                 last_publish_value = sensor_val
                 logger.info('weight sensor val : ' + str(sensor_val))
-            time.sleep(0.1)
+            time.sleep(0.5)
 
             
     def play_bgm(self, path):
