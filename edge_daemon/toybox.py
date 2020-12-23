@@ -60,28 +60,31 @@ class Toybox:
         self.sound_effect_player = Player()
         self.play_sound_queue = queue.Queue()
         self.iot_core_client_id = None
+        self.is_loading_properties_finished = False
         
     def init(self):
         logger.debug('')
-        # Load last memory
-        self.load_last_memory_for_all_properties(self.properties)
         
         # IoT Core
         logger.info('initialize iot core')        
         self.iot_core_client_id = 'toybox/' + settings.DEVICE_ID
         self.iot_core.init(settings.IOT_CORE_HOST, settings.IOT_CORE_PORT, settings.IOT_CORE_ROOT_CA_PATH, settings.IOT_CORE_PRIVATE_KEY_PATH, settings.IOT_CORE_CERTIFICATE_PATH, self.iot_core_client_id, settings.DEVICE_ID)
 
+        # get shadow and initialize properties
+        self.iot_core.subscribe_shadow_get_accepted(self.shadow_get_accepted_callback)
+        self.iot_core.subscribe_shadow_get_rejected(self.shadow_get_rejected_callback)
+        self.iot_core.publish_shadow_get_request()
+        self.wait_loading_properties()
+        self.iot_core.unsubscribe_shadow_get_accepted()
+        logger.debug('weight : ' + str(self.properties.weight.value))
+
         # Iot Core shadows
-        self.update_shadow_with_properties(self.properties)
         self.iot_core.subscribe_shadow_delta(self.shadow_delta_callback)
         self.iot_core.subscribe_shadow_delete_accepted(self.shadow_common_callback)
         self.iot_core.subscribe_shadow_delete_rejected(self.shadow_common_callback)
-        self.iot_core.subscribe_shadow_get_accepted(self.shadow_get_accepted_callback)
-        self.iot_core.subscribe_shadow_get_rejected(self.shadow_common_callback)
         self.iot_core.subscribe_shadow_update_accepted(self.shadow_common_callback)
         self.iot_core.subscribe_shadow_update_rejected(self.shadow_common_callback)
         self.iot_core.subscribe_shadow_update_documents(self.shadow_common_callback)
-        self.iot_core.publish_shadow_get_request()
         iot_core_publish_message_thread = threading.Thread(target=self.iot_core_publish_message_worker)
         iot_core_publish_message_thread.start()
 
@@ -105,7 +108,14 @@ class Toybox:
         # RFID reader thread
         rfid_reader_thread = threading.Thread(target=self.rfid_reader_worker)
         rfid_reader_thread.start()
-        
+
+    def wait_loading_properties(self):
+        logger.info('')
+        while True:
+            if self.is_loading_properties_finished == True:
+                break
+            time.sleep(0.1)
+        logger.info('wait loading properties end')
 
     def iot_core_publish_async(self, topic, message):
         logger.debug('')
@@ -182,11 +192,6 @@ class Toybox:
         text_to_speech = 'おもちゃの総重量が' + str(self.properties.total_toy_weight.value) + 'グラムに設定されました'
         self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_notification.value)
         self.play_sound_async('text_to_speech', text_to_speech)
-
-    def factory_reset_request_handler(self, request_detail):
-        logger.debug('')
-        self.reset_last_memory()
-        sys.exit(0)
         
     def control_request_handler(self, request_type, request_detail):
         logger.debug('')
@@ -196,8 +201,6 @@ class Toybox:
             self.play_sound_effect_request_handler(request_detail)
         elif request_type == 'set_total_weight':
             self.set_total_toy_weight_request_handler(request_detail)
-        elif request_type == 'factory_reset':
-            self.factory_reset_request_handler(request_detail)
 
     def control_request_callback(self, client, userdata, message):
         logger.debug('')
@@ -235,13 +238,27 @@ class Toybox:
         logger.debug('')
         logger.info('from topic: ' + message.topic)
         logger.info('message: ' + str(message.payload))
-        delta = json.loads(message.payload)
+        if self.is_loading_properties_finished == True:
+            return
+        shadow = json.loads(message.payload)
+        
         try:
-            shadow_desired_proiperties = delta['state']['desired']
+            shadow_reported_proiperties = shadow['state']['reported']
         except:
             logger.error('property is not set')
-            return
-        self.shadow_delta_callback_inner(shadow_desired_proiperties)
+            shadow_reported_proiperties = {}
+        
+        for prop in self.properties.__dict__.values():
+            if prop.name in shadow_reported_proiperties:
+                logger.debug('get properties from shadow : ' + prop.name)
+                prop.value = shadow_reported_proiperties[prop.name]
+            else:
+                logger.debug('update properties to shadow : ' + prop.name)
+                self.update_property(prop, prop.value)
+        self.is_loading_properties_finished = True
+
+    def shadow_get_rejected_callback(self, client, userdata, message):
+        logger.error("error!!! can't get shadow")
         
     def shadow_common_callback(self, client, userdata, message):
         logger.debug('')
@@ -298,45 +315,15 @@ class Toybox:
         logger.debug('')
         self.sound_effect_player.loadfile(path)
 
-    def load_last_memory(self, prop):
-        logger.debug('')
-        last_memory = shelve.open('toybox_data')
-        if prop.name in last_memory:
-            ret = last_memory[prop.name]
-        else:
-            last_memory[prop.name] = prop.value
-            ret = prop.value
-        last_memory.close()
-        return ret
-
-    def load_last_memory_for_all_properties(self, toybox_properties):
-        logger.debug('')
-        for prop in toybox_properties.__dict__.values():
-            prop.value = self.load_last_memory(prop)
-    
-    def save_last_memory(self, prop):
-        logger.debug('')
-        last_memory = shelve.open('toybox_data')
-        last_memory[prop.name] = prop.value
-        last_memory.close()
-
-    def reset_last_memory(self):
-        logger.debug('')
-        last_memory = shelve.open('toybox_data')
-        last_memory.clear()
-        last_memory.close()
-
     def update_shadow_with_properties(self, toybox_properties):
         logger.debug('')
         for prop in toybox_properties.__dict__.values():
-            print(prop)
             self.iot_core.update_shadow(prop.name, prop.value)
 
     def update_property(self, prop, value):
         logger.debug('')
         prop.value = value
         self.iot_core_publish_shadow_async(prop.name, prop.value)
-        self.save_last_memory(prop)
         
     def create_publish_message_button_pressed(self, value):
         logger.debug('')

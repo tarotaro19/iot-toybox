@@ -37,6 +37,9 @@ class IoTCoreClient:
     def subscribe(self, topic, callback):
         self.client.subscribe(topic, 1, callback)
 
+    def unsubscribe(self, topic):
+        self.client.unsubscribe(topic)
+
     def publish(self, topic, message):
         logger.info('publish - topic:' + topic + ', message' + message)
         self.client.publish(topic, message, 1)
@@ -57,6 +60,10 @@ class IoTCoreClient:
     def subscribe_shadow_get_accepted(self, callback):
         topic = '$aws/things/' + self.thing_name + '/shadow/get/accepted'
         self.client.subscribe(topic, 1, callback)
+
+    def unsubscribe_shadow_get_accepted(self):
+        topic = '$aws/things/' + self.thing_name + '/shadow/get/accepted'
+        self.client.unsubscribe(topic)
 
     def subscribe_shadow_get_rejected(self, callback):
         topic = '$aws/things/' + self.thing_name + '/shadow/get/rejected'
