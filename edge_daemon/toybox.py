@@ -393,6 +393,8 @@ class Toybox:
         message['time'] = int(time.time())
         message['uid'] = uid
         message['text'] = text
+        if self.properties.mode.value == 'toy_registration':
+            message['wait_registration'] = True
         return json.dumps(message)
     
     def rfid_reader_worker(self):
@@ -416,6 +418,7 @@ class Toybox:
 def main():
     toybox = Toybox()
     toybox.init()
+    
     while True:
         time.sleep(1)
         
