@@ -12,7 +12,7 @@ def lambda_handler(event, context):
         request_body = None
     ret = {'statusCode': 400, 'body': json.dumps('request is invalid')}
     
-    if resource_path == '/grouph-toybox/{deviceId}/toys':
+    if resource_path == '/toybox/{deviceId}/toys':
         ret = toys_handler.handler(resource_path, path_paremeters, method, request_body)
     
     return ret

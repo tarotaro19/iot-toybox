@@ -80,11 +80,6 @@ def button_handler(event):
                 publish_play_sound_effect_request(device_name, 'nogood')
                 publish_speech_request(device_name, utils.create_ssml_text_for_child('まだおもちゃが片付いてないよ！'))
  
-
-def dynamodb_put_item(item):
-    dynamodb = boto3.resource('dynamodb')
-    dynamo_table = dynamodb.Table('dynamodb-grouph-toybox-toys-test')
-    dynamo_table.put_item(Item=item)
  
 def rfid_handler(event):
     print('RFID hanlder')
@@ -107,7 +102,7 @@ def rfid_handler(event):
             "time" : event_time,
             "wait_registration" : True
         }
-        dynamodb_put_item(item)
+        utils.dynamodb_put_item(item)
         # reset toybox mode to "standby"
         update_shadow(device_name, 'mode', 'standby')
         publish_speech_request(device_name, 'おもちゃの情報を入力して下さい')

@@ -5,7 +5,7 @@ from decimal import Decimal
 from boto3.dynamodb.types import Binary
 
 ### DynamoDB
-dynamodb_toys_table_name = 'dynamodb-grouph-toybox-toys-test'
+dynamodb_toys_table_name = 'toybox-toys'
 def dynamo_scan_toys():
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(dynamodb_toys_table_name)
