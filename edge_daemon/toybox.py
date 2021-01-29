@@ -45,6 +45,7 @@ class ToyboxProperties:
         self.sound_effect_path_for_toy_in = ToyboxProperty('sound_effect_path_for_toy_in', './sounds/se_maoudamashii_magical29.mp3')
         self.sound_effect_path_for_toy_out = ToyboxProperty('sound_effect_path_for_toy_out', './sounds/se_maoudamashii_magical29.mp3')
         self.sound_effect_path_for_rfid_detection = ToyboxProperty('sound_effect_path_for_rfid_detection', './sounds/se_maoudamashii_onepoint25.mp3')
+        self.sound_effect_path_for_cheer = ToyboxProperty('sound_effect_path_for_cheer', './sounds/people-stadium-cheer1.mp3')
         
 class Toybox:
     toybox_mode_standby = 'standby'
@@ -183,6 +184,8 @@ class Toybox:
             self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_nogood.value)
         elif sound_effect_type == 'good':
             self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_good.value)
+        elif sound_effect_type == 'cheer':
+            self.play_sound_async('sound_effect', self.properties.sound_effect_path_for_cheer.value)
         
     def set_total_toy_weight_request_handler(self, request_detail):
         logger.debug('')
@@ -221,6 +224,8 @@ class Toybox:
                 self.toybox_mode_handler(shadow_delta_properties[prop_name])
             elif prop_name == self.properties.is_bgm_playing.name:
                 self.toybox_is_bgm_playing_handler(shadow_delta_properties[prop_name])
+            elif prop_name == self.properties.bgm_path.name:
+                self.update_property(self.properties.bgm_path, shadow_delta_properties[prop_name])
         
     def shadow_delta_callback(self, client, userdata, message):
         logger.debug('')
@@ -287,7 +292,7 @@ class Toybox:
         publish_topic = 'toybox/' + settings.DEVICE_ID + '/sensor/weight'
         while True:
             sensor_val = int(self.weight_sensor.get_value())
-            if abs(last_publish_value - sensor_val) > 3:
+            if abs(last_publish_value - sensor_val) > 5:
                 diff = sensor_val - last_publish_value
                 self.play_sound_effect_with_weight_sensor_changes(sensor_val, diff)
                 message = self.create_publish_message_weight_sensor(sensor_val, diff)
@@ -346,6 +351,8 @@ class Toybox:
 
     def create_ssml_text(self, text_to_speech):
         logger.debug('')
+        if text_to_speech.startswith('<speak>'):
+            return text_to_speech
         ssml_text = "<speak><prosody volume=\"x-loud\">" + text_to_speech + "</prosody></speak>"
         return ssml_text
 
