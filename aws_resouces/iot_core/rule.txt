@@ -1,0 +1,2 @@
+SELECT clientid() AS client_id, topic(4) AS sensor_type, * FROM 'toybox/+/sensor/#' 
+ -> Lambda: toybox-snesor-handler 
