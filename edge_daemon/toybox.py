@@ -36,7 +36,7 @@ class ToyboxProperties:
         self.mode = ToyboxProperty('mode', 'standby')
         self.weight = ToyboxProperty('weight', 0)
         self.total_toy_weight = ToyboxProperty('total_toy_weight', 0)
-        self.bgm_path = ToyboxProperty('bgm_path', 'sounds/bgm_maoudamashii_8bit29.mp3')
+        self.bgm_path = ToyboxProperty('bgm_path', 'sounds/bgm_test.mp3')
         self.is_bgm_playing = ToyboxProperty('is_bgm_playing', False)
         self.rfid_detection_sound = ToyboxProperty('rfid_detection_sound', True)
         self.sound_effect_path_for_notification = ToyboxProperty('sound_effect_path_for_notification', './sounds/se_maoudamashii_onepoint23.mp3')
