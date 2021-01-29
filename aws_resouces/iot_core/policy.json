@@ -1,0 +1,48 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Publish",
+        "iot:Receive"
+      ],
+      "Resource": [
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/sdk/test/java",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/sdk/test/Python",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/toybox/*",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/$aws/things/toybox-*/shadow/get",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/$aws/things/toybox-*/shadow/get/*",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/$aws/things/toybox-*/shadow/update",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/$aws/things/toybox-*/shadow/update/*",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/$aws/things/toybox-*/shadow/delete",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/$aws/things/toybox-*/shadow/delete/*",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topic/$aws/things/toybox-*/shadow/update/delta"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Subscribe"
+      ],
+      "Resource": [
+        "arn:aws:iot:ap-northeast-1:xxxxx:topicfilter/toybox/*",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topicfilter/$aws/things/toybox-*/shadow/get/*",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topicfilter/$aws/things/toybox-*/shadow/delete/*",
+        "arn:aws:iot:ap-northeast-1:xxxxx:topicfilter/$aws/things/toybox-*/shadow/update/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Connect"
+      ],
+      "Resource": [
+        "arn:aws:iot:ap-northeast-1:xxxxx:client/sdk-java",
+        "arn:aws:iot:ap-northeast-1:xxxxx:client/basicPubSub",
+        "arn:aws:iot:ap-northeast-1:xxxxx:client/sdk-nodejs-*",
+        "arn:aws:iot:ap-northeast-1:xxxxx:client/toybox/*"
+      ]
+    }
+  ]
+}
